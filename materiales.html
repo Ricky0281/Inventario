@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <title>Evaluación Interventoría</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f6f8fa;
+      color: #222;
+      margin: 20px;
+      text-align: center;
+    }
+    .card {
+      background: white;
+      width: 920px;
+      max-width: 95%;
+      margin: 12px auto;
+      padding: 16px;
+      border-radius: 10px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+      text-align: left;
+    }
+    h1 { margin: 0 0 8px 0; }
+    .row { display:flex; gap:12px; flex-wrap:wrap; }
+    .col { flex:1 1 200px; min-width:150px; }
+    label { display:block; font-size:14px; margin-bottom:6px; }
+    input[type="number"], input[type="text"], select {
+      width:100%;
+      padding:8px;
+      font-size:14px;
+      border-radius:6px;
+      border:1px solid #ccc;
+      box-sizing:border-box;
+    }
+    button {
+      padding:10px 16px;
+      font-size:15px;
+      border-radius:8px;
+      border: none;
+      cursor: pointer;
+      background: #0b78e6;
+      color: white;
+      margin-top:4px;
+    }
+    button.secondary { background: #6c757d; }
+    table {
+      width:100%;
+      border-collapse:collapse;
+      margin-top:12px;
+    }
+    th, td {
+      border:1px solid #e1e4e8;
+      padding:8px;
+      font-size:13px;
+      text-align:center;
+    }
+    th { background:#0b78e6; color:white; }
+    tfoot td { font-weight:bold; }
+    .badge { padding:4px 8px; border-radius:999px; display:inline-block; font-size:13px; }
+    .msg-ex { background:#dff0d8; color:#2f8a2f; }
+    .msg-bu { background:#fff3cd; color:#8a6d00; }
+    .msg-reg { background:#f8d7da; color:#721c24; }
+    .small { font-size:12px; color:#555; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>INTERVENTORIA</h1>
+    <h2>CALIFICACION</h2>
+    <p class="small">Ingresa los puntajes en su rango correspondiente. Se calcula el puntaje ponderado exactamente como en tu macro VBA.</p>
+
+    <div class="row">
+      <div class="col">
+        <label for="supervisor">SUPERVISOR</label>
+        <input type="text" id="supervisor" placeholder="Ej: Juan Pérez">
+      </div>
+      <div class="col" style="flex:0 0 320px; min-width:220px; display:flex; flex-direction:column; align-items:center;">
+        <label for="zona" style="width:100%; text-align:center;">ZONA</label>
+        <select id="zona" style="width:100%; max-width:280px;"></select>
+          <option value="">-- Seleccionar zona --</option>
+          <option value="Cali">Cali</option>
+          <option value="Centro">Centro</option>
+          <option value="Norte">Norte</option>
+        </select>
+      </div>
+      <div class="col">
+        <label for="aspSeg">ASPECTOS AMBIENTALES Y SEGURIDAD (0 a 18)</label>
+        <input type="number" id="aspSeg" min="0" max="18" step="1" placeholder="0 - 18">
+      </div>
+      <div class="col">
+        <label for="calOper">CALIDAD OPERATIVA (0 a 23)</label>
+        <input type="number" id="calOper" min="0" max="23" step="1" placeholder="0 - 23">
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:10px;">
+      <div class="col">
+        <label for="recursos">RECURSOS (0 a 6)</label>
+        <input type="number" id="recursos" min="0" max="6" step="1" placeholder="0 - 6">
+      </div>
+      <div class="col">
+        <label for="cumplimiento">CUMPLIMIENTO (0 a 3)</label>
+        <input type="number" id="cumplimiento" min="0" max="3" step="1" placeholder="0 - 3">
+      </div>
+      <div class="col">
+        <label for="servicio">SERVICIO AL CLIENTE (0 a 2)</label>
+        <input type="number" id="servicio" min="0" max="2" step="1" placeholder="0 - 2">
+      </div>
+      <div class="col" style="display:flex; flex-direction:column; justify-content:flex-end;">
+        <button onclick="procesarRegistro()">Calcular y Guardar</button>
+        <button class="secondary" onclick="limpiarCampos()" style="margin-top:8px;">Limpiar campos</button>
+      </div>
+    </div>
+
+    <div style="margin-top:12px;">
+      <div id="resultadoPanel" style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Tabla de registros acumulados</h2>
+    <table id="tabla">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Supervisor</th>
+          <th>Zona</th>
+          <th>ASpSeg</th>
+          <th>CalOper</th>
+          <th>Recursos</th>
+          <th>Cumpl.</th>
+          <th>Servicio</th>
+          <th>Total</th>
+          <th>Mensaje</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+      <tfoot>
+        <tr>
+          <td colspan="8">Total registros</td>
+          <td id="totalGlobalAcum">0</td>
+          <td id="conteoRegistros">0</td>
+        </tr>
+      </tfoot>
+    </table>
+    <div style="margin-top:10px; display:flex; gap:8px;">
+      <button onclick="exportarCSV()">Exportar CSV</button>
+      <button class="secondary" onclick="borrarTabla()">Borrar tabla</button>
+    </div>
+  </div>
+
+<script>
+  // Calcula los puntajes con las mismas fórmulas del VBA
+  function calcularPuntaje(aspSeg, calOper, recursos, cumplimiento, servicio) {
+    // fórmulas trasladadas:
+    // totalAsp = (1.25 / 18) * aspSeg
+    // totalCal = (1.25 / 23) * calOper
+    // totalRec = (1 / 6) * recursos
+    // totalCum = (0.5 / 3) * cumplimiento
+    // totalServ = (1 / 2) * servicio
+    const totalAsp = (1.25 / 18) * aspSeg;
+    const totalCal = (1.25 / 23) * calOper;
+    const totalRec = (1 / 6) * recursos;
+    const totalCum = (0.5 / 3) * cumplimiento;
+    const totalServ = (1 / 2) * servicio;
+    const totalGlobal = totalAsp + totalCal + totalRec + totalCum + totalServ;
+    // redondear a 3 decimales para visualización
+    return {
+      totalAsp: +totalAsp.toFixed(4),
+      totalCal: +totalCal.toFixed(4),
+      totalRec: +totalRec.toFixed(4),
+      totalCum: +totalCum.toFixed(4),
+      totalServ: +totalServ.toFixed(4),
+      totalGlobal: +totalGlobal.toFixed(4)
+    };
+  }
+
+  function mensajeMotivacional(total) {
+    // Igual que tu Select Case en VBA
+    if (total >= 4.5) {
+      return { txt: "EXCELENTE DESEMPEÑO, NIVEL TOP! 🎯", clase: "msg-ex" };
+    } else if (total >= 3.5) {
+      return { txt: "BUEN TRABAJO, SIGUE ASÍ 👍", clase: "msg-bu" };
+    } else {
+      return { txt: "REVISAR PUNTOS Y MEJORAR 📌", clase: "msg-reg" };
+    }
+  }
+
+  function procesarRegistro() {
+    const supervisor = document.getElementById('supervisor').value.trim();
+    const zona = document.getElementById('zona').value;
+    const aspSeg = Number(document.getElementById('aspSeg').value);
+    const calOper = Number(document.getElementById('calOper').value);
+    const recursos = Number(document.getElementById('recursos').value);
+    const cumplimiento = Number(document.getElementById('cumplimiento').value);
+    const servicio = Number(document.getElementById('servicio').value);
+
+    // Validaciones iguales que en tu VBA (con reintento en VBA; aquí mostramos mensajes)
+    if (!supervisor) { alert("Por favor ingresa el nombre del supervisor."); return; }
+    if (!zona) { alert("Selecciona la zona (Cali, Centro o Norte)."); return; }
+
+    if (!Number.isFinite(aspSeg) || aspSeg < 0 || aspSeg > 18) { alert("ASPECTOS AMBIENTALES Y SEGURIDAD debe estar entre 0 y 18."); return; }
+    if (!Number.isFinite(calOper) || calOper < 0 || calOper > 23) { alert("CALIDAD OPERATIVA debe estar entre 0 y 23."); return; }
+    if (!Number.isFinite(recursos) || recursos < 0 || recursos > 6) { alert("RECURSOS debe estar entre 0 y 6."); return; }
+    if (!Number.isFinite(cumplimiento) || cumplimiento < 0 || cumplimiento > 3) { alert("CUMPLIMIENTO debe estar entre 0 y 3."); return; }
+    if (!Number.isFinite(servicio) || servicio < 0 || servicio > 2) { alert("SERVICIO AL CLIENTE debe estar entre 0 y 2."); return; }
+
+    const puntajes = calcularPuntaje(aspSeg, calOper, recursos, cumplimiento, servicio);
+
+    // Validación que detenga si el total supera 5 (igual que VBA)
+    if (puntajes.totalGlobal > 5) {
+      alert("La suma total excede el límite máximo de 5. Revisa tus valores y vuelve a intentarlo.");
+      return;
+    }
+
+    // Mostrar resultado rápido
+    const panel = document.getElementById('resultadoPanel');
+    panel.innerHTML = ""; // limpiar
+    const msg = mensajeMotivacional(puntajes.totalGlobal);
+    const nodo = document.createElement('div');
+    nodo.className = "badge " + msg.clase;
+    nodo.style.margin = "6px 0";
+    nodo.innerText = `Total: ${puntajes.totalGlobal} — ${msg.txt}`;
+    panel.appendChild(nodo);
+
+    // Agregar fila a la tabla acumulada
+    agregarFilaTabla({
+      supervisor,
+      zona,
+      aspSeg, calOper, recursos, cumplimiento, servicio,
+      total: puntajes.totalGlobal,
+      mensaje: msg.txt
+    });
+
+    // limpiar solo los campos numéricos (dejamos supervisor y zona por conveniencia)
+    document.getElementById('aspSeg').value = "";
+    document.getElementById('calOper').value = "";
+    document.getElementById('recursos').value = "";
+    document.getElementById('cumplimiento').value = "";
+    document.getElementById('servicio').value = "";
+  }
+
+  function agregarFilaTabla(reg) {
+    const tbody = document.querySelector('#tabla tbody');
+    const rowIndex = tbody.children.length + 1;
+    const tr = document.createElement('tr');
+
+    tr.innerHTML = `
+      <td>${rowIndex}</td>
+      <td>${escapeHtml(reg.supervisor)}</td>
+      <td>${escapeHtml(reg.zona)}</td>
+      <td>${reg.aspSeg}</td>
+      <td>${reg.calOper}</td>
+      <td>${reg.recursos}</td>
+      <td>${reg.cumplimiento}</td>
+      <td>${reg.servicio}</td>
+      <td>${reg.total}</td>
+      <td>${escapeHtml(reg.mensaje)}</td>
+    `;
+
+    tbody.appendChild(tr);
+    actualizarTotales();
+  }
+
+  function actualizarTotales() {
+    const tbody = document.querySelector('#tabla tbody');
+    const filas = Array.from(tbody.children);
+    const conteo = filas.length;
+    const sumaTotals = filas.reduce((acc, tr) => {
+      const val = Number(tr.children[8].innerText) || 0;
+      return acc + val;
+    }, 0);
+    document.getElementById('totalGlobalAcum').innerText = sumaTotals.toFixed(4);
+    document.getElementById('conteoRegistros').innerText = conteo;
+  }
+
+  // Limpia campos numéricos y selecciones si quieres reiniciar
+  function limpiarCampos() {
+    document.getElementById('supervisor').value = "";
+    document.getElementById('zona').value = "";
+    document.getElementById('aspSeg').value = "";
+    document.getElementById('calOper').value = "";
+    document.getElementById('recursos').value = "";
+    document.getElementById('cumplimiento').value = "";
+    document.getElementById('servicio').value = "";
+    document.getElementById('resultadoPanel').innerHTML = "";
+  }
+
+  // Exporta la tabla a CSV simple
+  function exportarCSV() {
+    const rows = [];
+    const headers = Array.from(document.querySelectorAll('#tabla thead th')).map(th => th.innerText);
+    rows.push(headers.join(','));
+    const trs = document.querySelectorAll('#tabla tbody tr');
+    trs.forEach(tr => {
+      const cols = Array.from(tr.children).map(td => `"${td.innerText.replace(/"/g,'""')}"`);
+      rows.push(cols.join(','));
+    });
+    const csv = rows.join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'evaluaciones_interventoria.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function borrarTabla() {
+    if (!confirm('¿Borrar todos los registros de la tabla? Esta acción no se puede deshacer.')) return;
+    document.querySelector('#tabla tbody').innerHTML = '';
+    actualizarTotales();
+  }
+
+  // Evita inyección de HTML en la tabla
+  function escapeHtml(str) {
+    if (typeof str !== 'string') return str;
+    return str.replace(/[&<>"'`=\/]/g, function(s) {
+      return ({
+        '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','/':'&#47;','=':'&#61;','`':'&#96;'
+      })[s];
+    });
+  }
+</script>
+</body>
+</html>
